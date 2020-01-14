@@ -6,12 +6,14 @@
 #include <BluetoothSerial.h>
 #include <String.h>
 #include <cstdio>
+#include "OmniOperator.hpp"
 
-const int STRAIGHT_SPEED = 100;
-const int TURN_SPEED = 100;
+const float STRAIGHT_RATE = 1.0;
+const float TURN_RATE = 1.0;
 const int MAX_DIR = 60;
 const int MIN_DISTANCE = 30;
 const int MAX_DISTANCE = 100;
+const bool DEBUG_ENABLE = true;
 
 enum State{
   WAITING,
@@ -22,10 +24,21 @@ enum State{
 int state = WAITING;
 
 void init_MD(){
+  Serial.println("G94 F70");
+  delay(100);
+  Serial.println("G1");
+  delay(100);
+  Serial.println("$120=3.500");
+  delay(100);
+  Serial.println("$121=3.500");
+  delay(100);
+  Serial.println("$122=3.500");
+  delay(100);
 
 }
 
 BluetoothSerial serialBT;
+OmniOperator omniopreator;
 
 void setup()
 {
@@ -35,6 +48,7 @@ void setup()
   //モータドライバの初期化(Gコードの設定など)
   init_MD();
   serialBT.begin("esp32");
+  omniopreator.init(1.0);//引数(range)で1命令当たりの各モータの最大移動量を指定．
 }
 
 class Command{
@@ -43,8 +57,8 @@ class Command{
     String extraInfo;
    public:
     Command(String str){
-      command = str.c_str[0];
-      extraInfo = str.substring(2,str.length-1);
+      command = str.c_str()[0];
+      extraInfo = str.substring(2,str.length()-1);
     }
     char getCommand(){
       return command;
@@ -76,25 +90,65 @@ void moveMoter(Position handPoistion){
   
   int direction = handPoistion.direciton;
   int distance = handPoistion.distance;
-  int target_motor_A=0,target_motor_B=0,target_motor_C=0;
+  float x=0,y=0,r=0;
 
   char sendStr[50];
 
   //回転成分がある場合は回転，回転成分がない場合のみ直進．
-  if(handPoistion.direciton == 0){
+  if(handPoistion.direciton != 0){
     if( handPoistion.direciton < 0){
-      target_motor_A=target_motor_B=target_motor_C=-TURN_SPEED;
+      r=-TURN_RATE;
     }else if(direction > 0){
-      target_motor_A=target_motor_B=target_motor_C=TURN_SPEED;
+      r=TURN_RATE;
     }
   }else{
-    if(MIN_DISTANCE<handPoistion.distance && handPoistion.distance <STRAIGHT_SPEED){
-      target_motor_B=target_motor_C=STRAIGHT_SPEED;
+    if(MIN_DISTANCE<handPoistion.distance && handPoistion.distance <MAX_DISTANCE){
+      x=0;
+      y=STRAIGHT_RATE;
     }
   }
+  omniopreator.calc_movement_value(x,y,r);
 
-  sprintf(sendStr,"G91 X%dY%dZ%d\0",target_motor_A,target_motor_B,target_motor_C);
+  sprintf(sendStr,"G91 X%f Y%f Z%f",omniopreator.get_top_motor_value(),omniopreator.get_right_motor_value(),omniopreator.get_left_motor_value());
   Serial.println(sendStr);
+}
+
+void omniTest(){
+  static int cnt=0;
+  float x=0.,y=0,r=0.;
+
+  switch(cnt%5){
+    case 0:
+      x=1;
+      y=0;
+      r=0;
+      break;
+    case 1:
+      x=0;
+      y=1;
+      r=0;
+      break;
+    case 2:
+      x=0;
+      y=0;
+      r=1;
+      break;
+    case 3:
+      x=0;
+      y=0;
+      r=-1;
+      break;
+    case 4:
+      x=-1;
+      y=-1;
+      r=0;
+      break;
+  }
+  char sendStr[50];
+  omniopreator.calc_movement_value(x,y,r);
+  sprintf(sendStr,"G91 X%f Y%f Z%f",omniopreator.get_top_motor_value(),omniopreator.get_right_motor_value(),omniopreator.get_left_motor_value());
+  Serial.println(sendStr);
+  cnt++;
 }
 
 void loop()
@@ -104,6 +158,12 @@ void loop()
     String str = serialBT.readString();
     Command command(str);
     String extraInfo = command.getExtraInfo();
+    if(DEBUG_ENABLE){
+          Serial.print("Command:");
+          Serial.println(command.getCommand());
+          Serial.print("Info:");
+          Serial.println(extraInfo);
+      }
     switch (command.getCommand())
     {
     case 'f':
@@ -111,10 +171,16 @@ void loop()
         state = PAUSE;
         pushButton();//この中にdelay入れる場合はstate不要かも
         state = RUNNING;
+        if(DEBUG_ENABLE){
+          Serial.println("start called");
+        }
       }else if(extraInfo.equals("line_finished")){
         state = PAUSE;
         pushButton();
         state = RUNNING;
+        if(DEBUG_ENABLE){
+          Serial.println("line_finished");
+        }
       }else if(extraInfo.equals("end")){
         state=WAITING;
       }
@@ -132,5 +198,8 @@ void loop()
     //モータの回転量を反映
     moveMoter(handPosition);
   }
+
+  // omniTest();
+  delay(2000);
 }
 
