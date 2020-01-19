@@ -6,7 +6,9 @@
 #include <BluetoothSerial.h>
 #include <String.h>
 #include <cstdio>
+#include <Wire.h>
 #include "OmniOperator.hpp"
+#include "VL53L0XWrapper.hpp"
 
 const float STRAIGHT_RATE = 1.0;
 const float TURN_RATE = 1.0;
@@ -14,14 +16,27 @@ const int MAX_DIR = 60;
 const int MIN_DISTANCE = 30;
 const int MAX_DISTANCE = 100;
 const bool DEBUG_ENABLE = true;
+const uint8_t SHUT1=15,SHUT2=16,SHUT3=17;
+const uint8_t ADDR1=0b0101001+1;
+const uint8_t ADDR2=0b0101001+2;
+const uint8_t ADDR3=0b0101001+3;
 
 enum State{
   WAITING,
   RUNNING,
   PAUSE
 };
-
 int state = WAITING;
+
+enum DIRECTION{
+  OUT_OF_RANGE,
+  MORE_LEFT,
+  LEFT,
+  FRONT,
+  RIGHT,
+  MORE_RIGHT
+};
+int direction = OUT_OF_RANGE;
 
 void init_MD(){
   Serial.println("G94 F70");
@@ -39,6 +54,7 @@ void init_MD(){
 
 BluetoothSerial serialBT;
 OmniOperator omniopreator;
+VL53L0XWrapper sensor1(SHUT1),sensor2(SHUT2),sensor3(SHUT3);
 
 void setup()
 {
@@ -49,6 +65,12 @@ void setup()
   init_MD();
   serialBT.begin("esp32");
   omniopreator.init(1.0);//引数(range)で1命令当たりの各モータの最大移動量を指定．
+
+  //センサーの初期化ほか
+  Wire.begin(4,5,20000);
+  sensor1.init(ADDR1);
+  sensor2.init(ADDR2);
+  sensor3.init(ADDR3);
 }
 
 class Command{
@@ -79,33 +101,48 @@ struct Position{
 };
 
 //TODO
-Position getHandPosition(){
-  Position handPosition;
-  handPosition.distance=0;
-  handPosition.direciton=0;
-  return handPosition;
+int getHandPosition(){
+  bool isSensor1Ranged = sensor1.isInnnerRange(MAX_DISTANCE);
+  bool isSensor2Ranged = sensor2.isInnnerRange(MAX_DISTANCE);
+  bool isSensor3Ranged = sensor3.isInnnerRange(MAX_DISTANCE);
+
+  if(isSensor1Ranged == false&& isSensor2Ranged == false && isSensor3Ranged == false ){
+    return OUT_OF_RANGE;
+  }else if( isSensor1Ranged == true&& isSensor2Ranged == false && isSensor3Ranged == false ){
+    return MORE_LEFT;
+  }else if( isSensor1Ranged == true&& isSensor2Ranged == true && isSensor3Ranged == false ){
+    return LEFT;
+  }else if( isSensor1Ranged == false&& isSensor2Ranged == true && isSensor3Ranged == false ){
+    return FRONT;
+  }else if( isSensor1Ranged == false&& isSensor2Ranged == true && isSensor3Ranged == true ){
+    return RIGHT;
+  }else if( isSensor1Ranged == false&& isSensor2Ranged == false && isSensor3Ranged == true ){
+    return MORE_RIGHT;
+  }
+  return OUT_OF_RANGE;
 }
 
-void moveMoter(Position handPoistion){
-  
-  int direction = handPoistion.direciton;
-  int distance = handPoistion.distance;
+void moveMoter(int direction){
   float x=0,y=0,r=0;
-
   char sendStr[50];
 
   //回転成分がある場合は回転，回転成分がない場合のみ直進．
-  if(handPoistion.direciton != 0){
-    if( handPoistion.direciton < 0){
-      r=-TURN_RATE;
-    }else if(direction > 0){
-      r=TURN_RATE;
-    }
-  }else{
-    if(MIN_DISTANCE<handPoistion.distance && handPoistion.distance <MAX_DISTANCE){
+  switch(direction){
+    case FRONT:
       x=0;
       y=STRAIGHT_RATE;
-    }
+      break;
+    case LEFT:
+    case MORE_LEFT:
+      r=-TURN_RATE;
+      break;
+    case RIGHT:
+    case MORE_RIGHT:
+      r=-TURN_RATE;
+      break;
+    case OUT_OF_RANGE:
+    default:
+      return;
   }
   omniopreator.calc_movement_value(x,y,r);
 
@@ -193,10 +230,10 @@ void loop()
 
   if(state == RUNNING || state == WAITING ){
     //手の位置を検出するセンサの値を取得.中心が0,右ならプラス，左ならマイナス的なInt値で返す
-    Position handPosition = getHandPosition();
+    int direction = getHandPosition();
     
     //モータの回転量を反映
-    moveMoter(handPosition);
+    moveMoter(direction);
   }
 
   // omniTest();
