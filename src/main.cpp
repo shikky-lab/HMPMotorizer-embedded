@@ -7,6 +7,7 @@
 #include <String.h>
 #include <cstdio>
 #include <Wire.h>
+#include <M5Stack.h>
 #include "OmniOperator.hpp"
 #include "VL53L0XWrapper.hpp"
 
@@ -16,7 +17,10 @@ const int MAX_DIR = 60;
 const int MIN_DISTANCE = 30;
 const int MAX_DISTANCE = 100;
 const bool DEBUG_ENABLE = true;
-const uint8_t SHUT1=15,SHUT2=16,SHUT3=17;
+// const uint8_t SHUT1=18,SHUT2=17,SHUT3=19;
+const uint8_t SHUT1=22,SHUT2=21,SHUT3=2;
+// const uint8_t SDA_PIN=21,SCL_PIN=22;
+const uint8_t SDA_PIN=3,SCL_PIN=13;
 const uint8_t ADDR1=0b0101001+1;
 const uint8_t ADDR2=0b0101001+2;
 const uint8_t ADDR3=0b0101001+3;
@@ -67,7 +71,10 @@ void setup()
   omniopreator.init(1.0);//引数(range)で1命令当たりの各モータの最大移動量を指定．
 
   //センサーの初期化ほか
-  Wire.begin(4,5,20000);
+  // Serial.println("wait 5000");
+  // delay(5000);
+  Serial.println("start init");
+  Wire.begin(SDA_PIN,SCL_PIN,20000);
   sensor1.init(ADDR1);
   sensor2.init(ADDR2);
   sensor3.init(ADDR3);
@@ -103,22 +110,33 @@ struct Position{
 //TODO
 int getHandPosition(){
   bool isSensor1Ranged = sensor1.isInnnerRange(MAX_DISTANCE);
+  // M5.Lcd.printf("sensor1 = %05d",sensor1.getDist());
+  Serial.print(sensor1.getDist());
+  Serial.print("\t");
   bool isSensor2Ranged = sensor2.isInnnerRange(MAX_DISTANCE);
+  Serial.print(sensor2.getDist());
+  Serial.print("\t");
   bool isSensor3Ranged = sensor3.isInnnerRange(MAX_DISTANCE);
+  Serial.println(sensor3.getDist());
 
-  if(isSensor1Ranged == false&& isSensor2Ranged == false && isSensor3Ranged == false ){
-    return OUT_OF_RANGE;
-  }else if( isSensor1Ranged == true&& isSensor2Ranged == false && isSensor3Ranged == false ){
-    return MORE_LEFT;
-  }else if( isSensor1Ranged == true&& isSensor2Ranged == true && isSensor3Ranged == false ){
-    return LEFT;
-  }else if( isSensor1Ranged == false&& isSensor2Ranged == true && isSensor3Ranged == false ){
-    return FRONT;
-  }else if( isSensor1Ranged == false&& isSensor2Ranged == true && isSensor3Ranged == true ){
-    return RIGHT;
-  }else if( isSensor1Ranged == false&& isSensor2Ranged == false && isSensor3Ranged == true ){
-    return MORE_RIGHT;
-  }
+  // if(isSensor1Ranged == false&& isSensor2Ranged == false && isSensor3Ranged == false ){
+  //   return OUT_OF_RANGE;
+  // }else if( isSensor1Ranged == true&& isSensor2Ranged == false && isSensor3Ranged == false ){
+  //   Serial.println("more left");
+  //   return MORE_LEFT;
+  // }else if( isSensor1Ranged == true&& isSensor2Ranged == true && isSensor3Ranged == false ){
+  //   Serial.println("left");
+  //   return LEFT;
+  // }else if( isSensor1Ranged == false&& isSensor2Ranged == true && isSensor3Ranged == false ){
+  //   Serial.println("front");
+  //   return FRONT;
+  // }else if( isSensor1Ranged == false&& isSensor2Ranged == true && isSensor3Ranged == true ){
+  //   Serial.println("right");
+  //   return RIGHT;
+  // }else if( isSensor1Ranged == false&& isSensor2Ranged == false && isSensor3Ranged == true ){
+  //   Serial.println("more right");
+  //   return MORE_RIGHT;
+  // }
   return OUT_OF_RANGE;
 }
 
@@ -237,6 +255,6 @@ void loop()
   }
 
   // omniTest();
-  delay(2000);
+  delay(500);
 }
 

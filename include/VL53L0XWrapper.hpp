@@ -17,6 +17,7 @@ private:
   uint8_t shutdown_pin;
   uint8_t address;
   VL53L0X sensor;
+  uint16_t dist;
 	void bootOn();
 	void shutDown();
 public:
@@ -25,6 +26,12 @@ public:
   uint16_t readRangeSingleMillimeters();
   bool timeoutOccurred();
   bool isInnnerRange(int range);
+  uint16_t getDist(){
+    return dist;
+  }
+  void setDist(uint16_t __dist){
+    this->dist = __dist;
+  }
 };
 
 #endif /* VL53L0XWRAPPER_HPP_ */
