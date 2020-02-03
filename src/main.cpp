@@ -25,6 +25,21 @@ const uint8_t ADDR1=0b0101001+1;
 const uint8_t ADDR2=0b0101001+2;
 const uint8_t ADDR3=0b0101001+3;
 
+const uint16_t LCD_HEIGHT = 240;
+const uint16_t LCD_WIDTH = 320;
+const uint16_t LCD_LEFT_X_POS = (LCD_WIDTH/4);
+const uint16_t LCD_LEFT_Y_POS = 10;
+const uint16_t LCD_CENTER_X_POS = (LCD_WIDTH/2);
+const uint16_t LCD_CENTER_Y_POS = 10;
+const uint16_t LCD_RIGHT_X_POS = (LCD_WIDTH*3/4);
+const uint16_t LCD_RIGHT_Y_POS = 10;
+const uint16_t LCD_DISPLAY_X_POS = LCD_WIDTH/2;
+const uint16_t LCD_DISPLAY_Y_POS = LCD_HEIGHT/2;
+const uint16_t LCD_BT_LEFT_X_POS = (LCD_WIDTH/4);
+const uint16_t LCD_BT_LEFT_Y_POS = LCD_HEIGHT*3/4;
+const uint16_t LCD_BT_CENTER_X_POS = (LCD_WIDTH/2);
+const uint16_t LCD_BT_CENTER_Y_POS = LCD_HEIGHT*3/4;
+
 enum State{
   WAITING,
   RUNNING,
@@ -70,14 +85,24 @@ void setup()
   serialBT.begin("esp32");
   omniopreator.init(1.0);//引数(range)で1命令当たりの各モータの最大移動量を指定．
 
+  //LCDの初期化
+  M5.lcd.begin();
+  M5.lcd.setTextSize(2);
+  M5.Lcd.setTextDatum(4);
+
   //センサーの初期化ほか
   // Serial.println("wait 5000");
   // delay(5000);
   Serial.println("start init");
   Wire.begin(SDA_PIN,SCL_PIN,20000);
-  sensor1.init(ADDR1);
-  sensor2.init(ADDR2);
-  sensor3.init(ADDR3);
+  int init_result1=0,init_result2=0,init_result3=0;
+  init_result1 = sensor1.init(ADDR1);
+  init_result2=sensor2.init(ADDR2);
+  init_result3=sensor3.init(ADDR3);
+  if(init_result1!=0 || init_result2!=0||init_result3!=0){
+    m5.lcd.printf("LCD initialization error occured!!\nPlease check connection and restart");
+    while(1);
+  }
 }
 
 class Command{
@@ -110,33 +135,39 @@ struct Position{
 //TODO
 int getHandPosition(){
   bool isSensor1Ranged = sensor1.isInnnerRange(MAX_DISTANCE);
-  // M5.Lcd.printf("sensor1 = %05d",sensor1.getDist());
-  Serial.print(sensor1.getDist());
-  Serial.print("\t");
+  M5.Lcd.setCursor(LCD_LEFT_X_POS,LCD_LEFT_Y_POS);
+  M5.Lcd.printf("%05d",sensor1.getDist());
   bool isSensor2Ranged = sensor2.isInnnerRange(MAX_DISTANCE);
-  Serial.print(sensor2.getDist());
-  Serial.print("\t");
+  M5.Lcd.setCursor(LCD_CENTER_X_POS,LCD_CENTER_Y_POS);
+  M5.Lcd.printf("%05d",sensor2.getDist());
   bool isSensor3Ranged = sensor3.isInnnerRange(MAX_DISTANCE);
-  Serial.println(sensor3.getDist());
+  M5.Lcd.setCursor(LCD_RIGHT_X_POS,LCD_RIGHT_Y_POS);
+  M5.Lcd.printf("%05d",sensor3.getDist());
 
-  // if(isSensor1Ranged == false&& isSensor2Ranged == false && isSensor3Ranged == false ){
-  //   return OUT_OF_RANGE;
-  // }else if( isSensor1Ranged == true&& isSensor2Ranged == false && isSensor3Ranged == false ){
-  //   Serial.println("more left");
-  //   return MORE_LEFT;
-  // }else if( isSensor1Ranged == true&& isSensor2Ranged == true && isSensor3Ranged == false ){
-  //   Serial.println("left");
-  //   return LEFT;
-  // }else if( isSensor1Ranged == false&& isSensor2Ranged == true && isSensor3Ranged == false ){
-  //   Serial.println("front");
-  //   return FRONT;
-  // }else if( isSensor1Ranged == false&& isSensor2Ranged == true && isSensor3Ranged == true ){
-  //   Serial.println("right");
-  //   return RIGHT;
-  // }else if( isSensor1Ranged == false&& isSensor2Ranged == false && isSensor3Ranged == true ){
-  //   Serial.println("more right");
-  //   return MORE_RIGHT;
-  // }
+  M5.Lcd.setCursor(LCD_DISPLAY_X_POS,LCD_DISPLAY_Y_POS);
+  M5.Lcd.print("                        ");
+  if(isSensor1Ranged == false&& isSensor2Ranged == false && isSensor3Ranged == false ){
+    M5.Lcd.print("OUT OF RANGE");
+    return OUT_OF_RANGE;
+  }else if( isSensor1Ranged == true&& isSensor2Ranged == false && isSensor3Ranged == false ){
+    M5.Lcd.print("MORE LEFT");
+    return MORE_LEFT;
+  }else if( isSensor1Ranged == true&& isSensor2Ranged == true && isSensor3Ranged == false ){
+    M5.Lcd.print("LEFT");
+    return LEFT;
+  }else if( isSensor1Ranged == false&& isSensor2Ranged == true && isSensor3Ranged == false ){
+    M5.Lcd.print("FRONT");
+    return FRONT;
+  }else if( isSensor1Ranged == false&& isSensor2Ranged == true && isSensor3Ranged == true ){
+    M5.Lcd.print("RIGHT");
+    return RIGHT;
+  }else if( isSensor1Ranged == false&& isSensor2Ranged == false && isSensor3Ranged == true ){
+    M5.Lcd.print("MORE RIGHT");
+    return MORE_RIGHT;
+  }else{
+    M5.Lcd.print("OTHER STATE");
+    return OUT_OF_RANGE;
+  }
   return OUT_OF_RANGE;
 }
 
@@ -213,12 +244,20 @@ void loop()
     String str = serialBT.readString();
     Command command(str);
     String extraInfo = command.getExtraInfo();
-    if(DEBUG_ENABLE){
-          Serial.print("Command:");
-          Serial.println(command.getCommand());
-          Serial.print("Info:");
-          Serial.println(extraInfo);
-      }
+    // if(DEBUG_ENABLE){
+    //     Serial.print("Command:");
+    //     Serial.println(command.getCommand());
+    //     Serial.print("info:");
+    //     Serial.println(command.getExtraInfo());
+    //     // M5.Lcd.setCursor(LCD_BT_LEFT_X_POS,LCD_BT_LEFT_Y_POS);
+    //     // M5.Lcd.print("                    ");
+    //     // M5.Lcd.print("Command:");
+    //     // M5.Lcd.printf(command.getCommand());
+    //     // M5.Lcd.setCursor(LCD_BT_CENTER_X_POS,LCD_BT_CENTER_Y_POS);
+    //     // M5.Lcd.print("                    ");
+    //     // M5.Lcd.print("Info:");
+    //     // M5.Lcd.println(extraInfo);
+    //   }
     switch (command.getCommand())
     {
     case 'f':
@@ -226,16 +265,20 @@ void loop()
         state = PAUSE;
         pushButton();//この中にdelay入れる場合はstate不要かも
         state = RUNNING;
-        if(DEBUG_ENABLE){
-          Serial.println("start called");
-        }
+
+        M5.Lcd.setCursor(LCD_BT_LEFT_X_POS,LCD_BT_LEFT_Y_POS);
+        M5.Lcd.print("                    ");
+        M5.Lcd.print("start called");
+
       }else if(extraInfo.equals("line_finished")){
         state = PAUSE;
         pushButton();
         state = RUNNING;
-        if(DEBUG_ENABLE){
-          Serial.println("line_finished");
-        }
+
+        M5.Lcd.setCursor(LCD_BT_LEFT_X_POS,LCD_BT_LEFT_Y_POS);
+        M5.Lcd.print("                    ");
+        M5.Lcd.print("line finished");
+
       }else if(extraInfo.equals("end")){
         state=WAITING;
       }
@@ -247,7 +290,7 @@ void loop()
   }
 
   if(state == RUNNING || state == WAITING ){
-    //手の位置を検出するセンサの値を取得.中心が0,右ならプラス，左ならマイナス的なInt値で返す
+    //手の位置を検出するセンサの値を取得.DIRECTIONの列挙型
     int direction = getHandPosition();
     
     //モータの回転量を反映

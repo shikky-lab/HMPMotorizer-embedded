@@ -23,10 +23,11 @@ int VL53L0XWrapper::init(uint8_t address){
     bootOn();
     if(!sensor.init()){
         Serial.println("Failed to detect and initialize sensor!");
-        while (1) {}
+        return -1;
     }
     sensor.setTimeout(500);
     sensor.setAddress(address);
+    return 0;
 }
 uint16_t VL53L0XWrapper::readRangeSingleMillimeters(){
     return sensor.readRangeSingleMillimeters();
