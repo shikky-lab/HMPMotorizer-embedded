@@ -34,10 +34,11 @@ uint16_t VL53L0XWrapper::readRangeSingleMillimeters(){
 }
 bool VL53L0XWrapper::isInnnerRange(int range){
     uint16_t val = readRangeSingleMillimeters();  
-    setDist(val);
     if(timeoutOccurred()){
+        setDist(10000);
         return false;
     }
+    setDist(val);
     if(val<range){
         return true;
     }

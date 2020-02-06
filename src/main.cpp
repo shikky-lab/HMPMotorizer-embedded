@@ -58,15 +58,15 @@ enum DIRECTION{
 int direction = OUT_OF_RANGE;
 
 void init_MD(){
-  Serial.println("G94 F70");
+  Serial2.println("G94 F40");
   delay(100);
-  Serial.println("G1");
+  Serial2.println("G1");
   delay(100);
-  Serial.println("$120=3.500");
+  Serial2.println("$120=1.000");
   delay(100);
-  Serial.println("$121=3.500");
+  Serial2.println("$121=1.000");
   delay(100);
-  Serial.println("$122=3.500");
+  Serial2.println("$122=1.000");
   delay(100);
 
 }
@@ -77,8 +77,8 @@ VL53L0XWrapper sensor1(SHUT1),sensor2(SHUT2),sensor3(SHUT3);
 
 void setup()
 {
-  Serial.begin(115200);
-  Serial.println("Booting");
+  Serial2.begin(115200);
+  Serial2.println("Booting");
 
   //モータドライバの初期化(Gコードの設定など)
   init_MD();
@@ -91,16 +91,16 @@ void setup()
   M5.Lcd.setTextDatum(4);
 
   //センサーの初期化ほか
-  // Serial.println("wait 5000");
+  // Serial2.println("wait 5000");
   // delay(5000);
-  Serial.println("start init");
+  Serial2.println("start init");
   Wire.begin(SDA_PIN,SCL_PIN,20000);
   int init_result1=0,init_result2=0,init_result3=0;
   init_result1 = sensor1.init(ADDR1);
   init_result2=sensor2.init(ADDR2);
   init_result3=sensor3.init(ADDR3);
   if(init_result1!=0 || init_result2!=0||init_result3!=0){
-    m5.lcd.printf("LCD initialization error occured!!\nPlease check connection and restart");
+    m5.lcd.printf("ToF initialization error occured!!\nPlease check connection and restart");
     while(1);
   }
 }
@@ -145,7 +145,8 @@ int getHandPosition(){
   M5.Lcd.printf("%05d",sensor3.getDist());
 
   M5.Lcd.setCursor(LCD_DISPLAY_X_POS,LCD_DISPLAY_Y_POS);
-  M5.Lcd.print("                        ");
+  M5.Lcd.print("            ");
+  M5.Lcd.setCursor(LCD_DISPLAY_X_POS,LCD_DISPLAY_Y_POS);
   if(isSensor1Ranged == false&& isSensor2Ranged == false && isSensor3Ranged == false ){
     M5.Lcd.print("OUT OF RANGE");
     return OUT_OF_RANGE;
@@ -196,7 +197,7 @@ void moveMoter(int direction){
   omniopreator.calc_movement_value(x,y,r);
 
   sprintf(sendStr,"G91 X%f Y%f Z%f",omniopreator.get_top_motor_value(),omniopreator.get_right_motor_value(),omniopreator.get_left_motor_value());
-  Serial.println(sendStr);
+  Serial2.println(sendStr);
 }
 
 void omniTest(){
@@ -233,7 +234,7 @@ void omniTest(){
   char sendStr[50];
   omniopreator.calc_movement_value(x,y,r);
   sprintf(sendStr,"G91 X%f Y%f Z%f",omniopreator.get_top_motor_value(),omniopreator.get_right_motor_value(),omniopreator.get_left_motor_value());
-  Serial.println(sendStr);
+  Serial2.println(sendStr);
   cnt++;
 }
 
@@ -245,10 +246,10 @@ void loop()
     Command command(str);
     String extraInfo = command.getExtraInfo();
     // if(DEBUG_ENABLE){
-    //     Serial.print("Command:");
-    //     Serial.println(command.getCommand());
-    //     Serial.print("info:");
-    //     Serial.println(command.getExtraInfo());
+    //     Serial2.print("Command:");
+    //     Serial2.println(command.getCommand());
+    //     Serial2.print("info:");
+    //     Serial2.println(command.getExtraInfo());
     //     // M5.Lcd.setCursor(LCD_BT_LEFT_X_POS,LCD_BT_LEFT_Y_POS);
     //     // M5.Lcd.print("                    ");
     //     // M5.Lcd.print("Command:");
@@ -268,6 +269,7 @@ void loop()
 
         M5.Lcd.setCursor(LCD_BT_LEFT_X_POS,LCD_BT_LEFT_Y_POS);
         M5.Lcd.print("                    ");
+        M5.Lcd.setCursor(LCD_BT_LEFT_X_POS,LCD_BT_LEFT_Y_POS);
         M5.Lcd.print("start called");
 
       }else if(extraInfo.equals("line_finished")){
@@ -277,6 +279,7 @@ void loop()
 
         M5.Lcd.setCursor(LCD_BT_LEFT_X_POS,LCD_BT_LEFT_Y_POS);
         M5.Lcd.print("                    ");
+        M5.Lcd.setCursor(LCD_BT_LEFT_X_POS,LCD_BT_LEFT_Y_POS);
         M5.Lcd.print("line finished");
 
       }else if(extraInfo.equals("end")){
