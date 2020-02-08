@@ -39,7 +39,7 @@ bool VL53L0XWrapper::isInnnerRange(int range){
         return false;
     }
     setDist(val);
-    if(val<range){
+    if(val<range && val>30){
         return true;
     }
     return false;

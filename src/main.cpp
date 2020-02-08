@@ -18,7 +18,7 @@ const int MIN_DISTANCE = 30;
 const int MAX_DISTANCE = 100;
 const bool DEBUG_ENABLE = true;
 // const uint8_t SHUT1=18,SHUT2=17,SHUT3=19;
-const uint8_t SHUT1=22,SHUT2=21,SHUT3=2;
+const uint8_t SHUT3=22,SHUT2=21,SHUT1=2;
 // const uint8_t SDA_PIN=21,SCL_PIN=22;
 const uint8_t SDA_PIN=3,SCL_PIN=13;
 const uint8_t ADDR1=0b0101001+1;
@@ -94,7 +94,7 @@ void setup()
   // Serial2.println("wait 5000");
   // delay(5000);
   Serial2.println("start init");
-  Wire.begin(SDA_PIN,SCL_PIN,20000);
+  Wire.begin(SDA_PIN,SCL_PIN,2000);
   int init_result1=0,init_result2=0,init_result3=0;
   init_result1 = sensor1.init(ADDR1);
   init_result2=sensor2.init(ADDR2);
@@ -192,6 +192,7 @@ void moveMoter(int direction){
       break;
     case OUT_OF_RANGE:
     default:
+      x=y=r=0.0;
       return;
   }
   omniopreator.calc_movement_value(x,y,r);
