@@ -20,12 +20,15 @@ private:
   uint16_t dist;
 	void bootOn();
 	void shutDown();
+  bool isContinuous;
 public:
   VL53L0XWrapper(uint8_t shutdown_pin);
   int init(uint8_t address);
+  int init(uint8_t address,bool isContinous);
   uint16_t readRangeSingleMillimeters();
   bool timeoutOccurred();
-  bool isInnnerRange(int range);
+  bool isInnnerRange(int maxRange , int minRange);
+  uint16_t readLastRange();
   uint16_t getDist(){
     return dist;
   }

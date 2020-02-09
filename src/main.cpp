@@ -11,14 +11,14 @@
 #include "OmniOperator.hpp"
 #include "VL53L0XWrapper.hpp"
 
-const float STRAIGHT_RATE = 1.0;
-const float TURN_RATE = 1.0;
+const float STRAIGHT_RATE = 0.001;
+const float TURN_RATE = 0.001;
 const int MAX_DIR = 60;
-const int MIN_DISTANCE = 30;
+const int MIN_DISTANCE = 25;
 const int MAX_DISTANCE = 100;
 const bool DEBUG_ENABLE = true;
 // const uint8_t SHUT1=18,SHUT2=17,SHUT3=19;
-const uint8_t SHUT3=22,SHUT2=21,SHUT1=2;
+const uint8_t SHUT1=22,SHUT2=21,SHUT3=2;
 // const uint8_t SDA_PIN=21,SCL_PIN=22;
 const uint8_t SDA_PIN=3,SCL_PIN=13;
 const uint8_t ADDR1=0b0101001+1;
@@ -134,13 +134,13 @@ struct Position{
 
 //TODO
 int getHandPosition(){
-  bool isSensor1Ranged = sensor1.isInnnerRange(MAX_DISTANCE);
+  bool isSensor1Ranged = sensor1.isInnnerRange(MAX_DISTANCE,MIN_DISTANCE);
   M5.Lcd.setCursor(LCD_LEFT_X_POS,LCD_LEFT_Y_POS);
   M5.Lcd.printf("%05d",sensor1.getDist());
-  bool isSensor2Ranged = sensor2.isInnnerRange(MAX_DISTANCE);
+  bool isSensor2Ranged = sensor2.isInnnerRange(MAX_DISTANCE,MIN_DISTANCE);
   M5.Lcd.setCursor(LCD_CENTER_X_POS,LCD_CENTER_Y_POS);
   M5.Lcd.printf("%05d",sensor2.getDist());
-  bool isSensor3Ranged = sensor3.isInnnerRange(MAX_DISTANCE);
+  bool isSensor3Ranged = sensor3.isInnnerRange(MAX_DISTANCE,MIN_DISTANCE);
   M5.Lcd.setCursor(LCD_RIGHT_X_POS,LCD_RIGHT_Y_POS);
   M5.Lcd.printf("%05d",sensor3.getDist());
 
@@ -196,7 +196,6 @@ void moveMoter(int direction){
       return;
   }
   omniopreator.calc_movement_value(x,y,r);
-
   sprintf(sendStr,"G91 X%f Y%f Z%f",omniopreator.get_top_motor_value(),omniopreator.get_right_motor_value(),omniopreator.get_left_motor_value());
   Serial2.println(sendStr);
 }
@@ -302,6 +301,6 @@ void loop()
   }
 
   // omniTest();
-  delay(500);
+  delay(25);
 }
 

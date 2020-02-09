@@ -15,10 +15,11 @@ VL53L0XWrapper::VL53L0XWrapper(uint8_t shutdown_pin){
     shutDown();
 }
 
-int VL53L0XWrapper::init(uint8_t address){
+int VL53L0XWrapper::init(uint8_t address,bool isContinuous){
     if(address > 127){
         return -1;
     }
+    this->isContinuous=isContinuous;
     this->address = address;
     bootOn();
     if(!sensor.init()){
@@ -27,24 +28,39 @@ int VL53L0XWrapper::init(uint8_t address){
     }
     sensor.setTimeout(500);
     sensor.setAddress(address);
+    if(this->isContinuous){
+        sensor.startContinuous();
+    }
     return 0;
 }
+
+int VL53L0XWrapper::init(uint8_t address){
+    return init(address,false);
+}
+
 uint16_t VL53L0XWrapper::readRangeSingleMillimeters(){
     return sensor.readRangeSingleMillimeters();
 }
-bool VL53L0XWrapper::isInnnerRange(int range){
-    uint16_t val = readRangeSingleMillimeters();  
-    if(timeoutOccurred()){
-        setDist(10000);
-        return false;
+
+bool VL53L0XWrapper::isInnnerRange(int maxRange , int minRange){
+    uint16_t val;
+    if(this->isContinuous){
+        val=readLastRange();
+    }else{
+        val = readRangeSingleMillimeters();  
     }
     setDist(val);
-    if(val<range && val>30){
+    if(minRange<val && val<maxRange){
         return true;
     }
     return false;
-
 }
+
+
+uint16_t VL53L0XWrapper::readLastRange(){
+    return sensor.readRangeContinuousMillimeters();
+}
+
 bool VL53L0XWrapper::timeoutOccurred(){
     return sensor.timeoutOccurred();
 }
