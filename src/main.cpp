@@ -11,8 +11,9 @@
 #include "OmniOperator.hpp"
 #include "VL53L0XWrapper.hpp"
 
-const float STRAIGHT_RATE = 0.001;
-const float TURN_RATE = 0.001;
+const float STRAIGHT_RATE = 0.05;
+// const float STRAIGHT_RATE = 0.1;
+const float TURN_RATE = 0.05;
 const int MAX_DIR = 60;
 const int MIN_DISTANCE = 25;
 const int MAX_DISTANCE = 100;
@@ -24,6 +25,7 @@ const uint8_t SDA_PIN=3,SCL_PIN=13;
 const uint8_t ADDR1=0b0101001+1;
 const uint8_t ADDR2=0b0101001+2;
 const uint8_t ADDR3=0b0101001+3;
+const uint8_t SERVO_PIN=26;
 
 const uint16_t LCD_HEIGHT = 240;
 const uint16_t LCD_WIDTH = 320;
@@ -103,6 +105,11 @@ void setup()
     m5.lcd.printf("ToF initialization error occured!!\nPlease check connection and restart");
     while(1);
   }
+  ledcSetup(0, 50, 10);  // 0ch 50 Hz 10bit resolution
+  ledcAttachPin(SERVO_PIN, 0); // pinアサイン, 0ch
+  ledcWrite(0, 75);// (26/1024)*20ms ≒ 0.5 ms  (-90°)(123/1024)*20ms ≒ 2.4 ms (+90°)
+     delay(100);
+  //ledcWrite(0, 30);//戻すときはこれくらい
 }
 
 class Command{
@@ -124,6 +131,10 @@ class Command{
 
 //HMPのボタンを押すメソッド
 void pushButton(){
+  ledcWrite(0, 30);
+  delay(500);
+  ledcWrite(0, 75);// (26/1024)*20ms ≒ 0.5 ms  (-90°)(123/1024)*20ms ≒ 2.4 ms (+90°)
+  delay(100);
   return;
 }
 
@@ -179,15 +190,17 @@ void moveMoter(int direction){
   //回転成分がある場合は回転，回転成分がない場合のみ直進．
   switch(direction){
     case FRONT:
-      x=0;
-      y=STRAIGHT_RATE;
+      x=-STRAIGHT_RATE;
+      y=0;
       break;
     case LEFT:
     case MORE_LEFT:
-      r=-TURN_RATE;
+      x=-STRAIGHT_RATE*0.5;
+      r=TURN_RATE;
       break;
     case RIGHT:
     case MORE_RIGHT:
+      x=-STRAIGHT_RATE*0.5;
       r=-TURN_RATE;
       break;
     case OUT_OF_RANGE:
@@ -263,24 +276,24 @@ void loop()
     {
     case 'f':
       if(extraInfo.equals("start")){
-        state = PAUSE;
-        pushButton();//この中にdelay入れる場合はstate不要かも
-        state = RUNNING;
-
         M5.Lcd.setCursor(LCD_BT_LEFT_X_POS,LCD_BT_LEFT_Y_POS);
         M5.Lcd.print("                    ");
         M5.Lcd.setCursor(LCD_BT_LEFT_X_POS,LCD_BT_LEFT_Y_POS);
         M5.Lcd.print("start called");
 
-      }else if(extraInfo.equals("line_finished")){
         state = PAUSE;
-        pushButton();
+        pushButton();//この中にdelay入れる場合はstate不要かも
         state = RUNNING;
 
+
+      }else if(extraInfo.equals("line_finished")){
         M5.Lcd.setCursor(LCD_BT_LEFT_X_POS,LCD_BT_LEFT_Y_POS);
         M5.Lcd.print("                    ");
         M5.Lcd.setCursor(LCD_BT_LEFT_X_POS,LCD_BT_LEFT_Y_POS);
         M5.Lcd.print("line finished");
+        // state = PAUSE;
+        // pushButton();
+        // state = RUNNING;
 
       }else if(extraInfo.equals("end")){
         state=WAITING;
@@ -301,6 +314,6 @@ void loop()
   }
 
   // omniTest();
-  delay(25);
+  delay(30);
 }
 
